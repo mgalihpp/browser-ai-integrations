@@ -37,8 +37,17 @@ Backend ditulis menggunakan Rust dan framework Axum.
    ```
 
 3. Jalankan server:
+   
+   Mode Development:
    ```bash
    cargo run
+   ```
+   
+   Mode Release (Lebih Cepat & Recommended):
+   ```bash
+   ./start.sh
+   # atau
+   cd backend && cargo run --release
    ```
    Server akan berjalan di `http://localhost:3000`.
 
