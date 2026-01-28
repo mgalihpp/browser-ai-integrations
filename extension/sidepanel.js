@@ -528,15 +528,26 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('[Sidepanel] Initializing...');
 
     // Check backend health
+    await checkConnectionStatus();
+
+    initSession();
+    await refreshTabInfo();
+    
+    // Start periodic connection check (every 5 seconds)
+    setInterval(checkConnectionStatus, 5000);
+  }
+  
+  // Check connection status
+  async function checkConnectionStatus() {
     try {
-      const response = await fetch('http://localhost:3000/health');
+      const response = await fetch('http://localhost:3000/health', { 
+        method: 'GET',
+        signal: AbortSignal.timeout(3000) // 3 second timeout
+      });
       updateStatus(response.ok);
     } catch {
       updateStatus(false);
     }
-
-    initSession();
-    await refreshTabInfo();
   }
 
   // Event listeners
