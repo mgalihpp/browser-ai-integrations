@@ -647,6 +647,36 @@
                 font-weight: 500;
             }
 
+            .secondary-btn {
+                background: var(--bg-tertiary);
+                color: var(--text-primary);
+                border: 1px solid var(--border);
+                padding: 8px 16px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 13px;
+                font-weight: 500;
+            }
+
+            .secondary-btn:hover {
+                background: var(--bg-secondary);
+            }
+
+            .danger-btn {
+                background: var(--error);
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 13px;
+                font-weight: 500;
+            }
+
+            .danger-btn:hover {
+                opacity: 0.9;
+            }
+
             /* Switch Toggle */
             .switch {
                 position: relative;
@@ -1197,6 +1227,23 @@
                     "
                 >
                     <!-- Sessions will be injected here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Confirmation Modal -->
+        <div id="delete-modal" class="modal">
+            <div class="modal-content" style="max-width: 320px;">
+                <div class="modal-header">
+                    <h2>Hapus Sesi?</h2>
+                    <span class="close-modal" id="close-delete">&times;</span>
+                </div>
+                <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;">
+                    Sesi ini akan dihapus permanen dan tidak dapat dikembalikan.
+                </p>
+                <div class="modal-actions" style="gap: 10px;">
+                    <button id="cancel-delete-btn" class="secondary-btn">Batal</button>
+                    <button id="confirm-delete-btn" class="danger-btn">Hapus</button>
                 </div>
             </div>
         </div>

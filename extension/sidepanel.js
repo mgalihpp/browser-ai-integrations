@@ -208,11 +208,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // Modals
   const settingsModal = document.getElementById('settings-modal');
   const sessionModal = document.getElementById('session-modal');
+  const deleteModal = document.getElementById('delete-modal');
   const closeSettingsBtn = document.getElementById('close-settings');
   const closeSessionsBtn = document.getElementById('close-sessions');
+  const closeDeleteBtn = document.getElementById('close-delete');
   const saveSettingsBtn = document.getElementById('save-settings-btn');
+  const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+  const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
   const sessionListEl = document.getElementById('session-list');
   const quickActionsEl = document.querySelector('.quick-actions');
+  
+  let sessionToDelete = null; // Track which session to delete
 
   // Inputs in Settings
   const globalInstructionInput = document.getElementById('global-instruction');
@@ -646,6 +652,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
   closeSessionsBtn.addEventListener('click', () => closeModal(sessionModal));
 
+  // Delete Confirmation Modal
+  closeDeleteBtn.addEventListener('click', () => {
+    sessionToDelete = null;
+    closeModal(deleteModal);
+  });
+
+  cancelDeleteBtn.addEventListener('click', () => {
+    sessionToDelete = null;
+    closeModal(deleteModal);
+  });
+
+  confirmDeleteBtn.addEventListener('click', () => {
+    if (sessionToDelete) {
+      SessionManager.deleteSession(sessionToDelete);
+      if (currentSession && sessionToDelete === currentSession.id) {
+        initSession();
+      }
+      renderSessionList();
+      sessionToDelete = null;
+    }
+    closeModal(deleteModal);
+  });
+
   newChatBtn.addEventListener('click', () => {
     createNewSession();
   });
@@ -694,13 +723,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       deleteBtn.onclick = (e) => {
         e.stopPropagation();
-        if (confirm('Hapus sesi ini?')) {
-          SessionManager.deleteSession(session.id);
-          if (session.id === currentSession.id) {
-            initSession(); // Switch to another
-          }
-          renderSessionList();
-        }
+        sessionToDelete = session.id;
+        openModal(deleteModal);
       };
 
       el.onclick = () => switchSession(session.id);
