@@ -365,11 +365,14 @@ document.addEventListener('DOMContentLoaded', () => {
       if (message.image) {
         const img = document.createElement('img');
         img.src = message.image;
-        img.style.maxHeight = '150px';
-        img.style.maxWidth = '100%';
+        img.style.maxHeight = '120px';
+        img.style.maxWidth = '200px';
+        img.style.objectFit = 'contain';
         img.style.display = 'block';
         img.style.marginBottom = '8px';
         img.style.borderRadius = '4px';
+        img.style.border = '1px solid var(--border)';
+        img.style.cursor = 'pointer';
         bubbleDiv.appendChild(img);
       }
       const textSpan = document.createElement('div');
@@ -550,7 +553,12 @@ document.addEventListener('DOMContentLoaded', () => {
     currentSession = SessionManager.getSession(currentSession.id);
     currentSessionNameEl.textContent = currentSession.name;
 
+    // Capture current image for the request before clearing it from UI
+    const imageToSend = currentImage;
+
+    // Clear UI immediately
     messageInput.value = '';
+    if (currentImage) clearImage();
     sendBtn.disabled = true;
 
     showTyping();
@@ -582,12 +590,9 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify({
           message: text,
           custom_instruction: instruction || undefined,
-          image: currentImage || undefined
+          image: imageToSend || undefined
         }),
       });
-
-      // Clear image after sending
-      if (currentImage) clearImage();
 
       hideTyping();
 
