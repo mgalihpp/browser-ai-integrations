@@ -53,9 +53,8 @@ function connectWebSocket() {
 function startContextUpdates() {
   if (contextInterval) return;
   
-  contextInterval = setInterval(captureAndSendContext, CONTEXT_UPDATE_INTERVAL);
-  // Send initial context
-  captureAndSendContext();
+  contextInterval = setInterval(() => captureAndSendContext({ skipScreenshot: true }), CONTEXT_UPDATE_INTERVAL);
+  captureAndSendContext({ skipScreenshot: true });
 }
 
 // Stop context updates
@@ -199,13 +198,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'getConnectionStatus') {
     sendResponse({ connected: isConnected });
   } else if (message.action === 'forceContextUpdate') {
-    // Allow manual trigger from UI
-    captureAndSendContext({ forceUpdate: true });
-    sendResponse({ success: true });
+    captureAndSendContext({ forceUpdate: true }).then(() => {
+      sendResponse({ success: true });
+    });
+    return true; // Keep channel open for async response
   } else if (message.action === 'updateContextNoScreenshot') {
-    // Trigger update but skip screenshot
-    captureAndSendContext({ forceUpdate: true, skipScreenshot: true });
-    sendResponse({ success: true });
+    captureAndSendContext({ forceUpdate: true, skipScreenshot: true }).then(() => {
+      sendResponse({ success: true });
+    });
+    return true; // Keep channel open for async response
   }
   return true;
 });
@@ -245,7 +246,6 @@ async function setupOffscreenDocument(path) {
 }
 
 async function captureFullPage(tabId) {
-  // 0. Save original scroll position BEFORE any scrolling
   let originalScroll = null;
   try {
     originalScroll = await chrome.tabs.sendMessage(tabId, { action: 'getScrollPosition' });
@@ -253,7 +253,6 @@ async function captureFullPage(tabId) {
     console.log('[Background] Could not get original scroll position');
   }
 
-  // 1. Get metrics
   let metrics = null;
   try {
     metrics = await chrome.tabs.sendMessage(tabId, { action: 'getMetrics' });
@@ -264,23 +263,18 @@ async function captureFullPage(tabId) {
   
   if (!metrics) return null;
   
-  // Guardrail: Skip if too large
   if (metrics.height > 10000) {
     console.warn('[Background] Page too long for full screenshot (>10k px), fallback to viewport');
     return null;
   }
   
-  // Guardrail: If content is smaller than viewport, just use viewport capture
   if (metrics.height <= metrics.viewportHeight) {
     return await chrome.tabs.captureVisibleTab(null, { format: 'jpeg', quality: 50 });
   }
 
-  // Use try...finally to ensure scroll position is always restored
   try {
-    // 2. Setup offscreen
     await setupOffscreenDocument('offscreen.html');
     
-    // 3. Init canvas
     await chrome.runtime.sendMessage({
       target: 'offscreen',
       type: 'init',
@@ -288,9 +282,7 @@ async function captureFullPage(tabId) {
       height: metrics.height
     });
     
-    // 4. Scroll and capture
     let y = 0;
-    // Limit iterations to prevent infinite loops
     const maxIterations = 50; 
     let iterations = 0;
     
@@ -298,7 +290,6 @@ async function captureFullPage(tabId) {
       iterations++;
       
       await chrome.tabs.sendMessage(tabId, { action: 'scrollTo', x: 0, y: y });
-      // Wait for scroll/render
       await new Promise(r => setTimeout(r, 150));
       
       const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
@@ -316,7 +307,6 @@ async function captureFullPage(tabId) {
       y += metrics.viewportHeight;
     }
     
-    // 5. Get result
     const response = await chrome.runtime.sendMessage({
       target: 'offscreen',
       type: 'getResult'
@@ -324,7 +314,6 @@ async function captureFullPage(tabId) {
     
     return response.result;
   } finally {
-    // Restore original scroll position (not hardcoded 0,0)
     const restoreX = originalScroll?.x || 0;
     const restoreY = originalScroll?.y || 0;
     try {

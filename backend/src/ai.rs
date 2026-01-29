@@ -140,16 +140,18 @@ impl AiClient {
         // Add screenshot as image if available
         if let Some(ctx) = context {
             if let Some(screenshot) = &ctx.screenshot {
-                if let Some(base64_data) = screenshot.strip_prefix("data:image/jpeg;base64,") {
+                tracing::info!("Screenshot data received, length: {} bytes", screenshot.len());
+                
+                let image_added = if let Some(base64_data) = screenshot.strip_prefix("data:image/jpeg;base64,") {
                     parts.push(Part::InlineData {
                         inline_data: InlineData {
                             mime_type: "image/jpeg".to_string(),
                             data: base64_data.to_string(),
                         },
                     });
-                    tracing::info!("Including screenshot in AI request");
-                } else if let Some(base64_data) = screenshot.strip_prefix("data:image/png;base64,")
-                {
+                    tracing::info!("Including screenshot (JPEG) in AI request");
+                    true
+                } else if let Some(base64_data) = screenshot.strip_prefix("data:image/png;base64,") {
                     parts.push(Part::InlineData {
                         inline_data: InlineData {
                             mime_type: "image/png".to_string(),
@@ -157,7 +159,27 @@ impl AiClient {
                         },
                     });
                     tracing::info!("Including screenshot (PNG) in AI request");
+                    true
+                } else if let Some(base64_data) = screenshot.strip_prefix("data:image/webp;base64,") {
+                    parts.push(Part::InlineData {
+                        inline_data: InlineData {
+                            mime_type: "image/webp".to_string(),
+                            data: base64_data.to_string(),
+                        },
+                    });
+                    tracing::info!("Including screenshot (WebP) in AI request");
+                    true
+                } else {
+                    let prefix: String = screenshot.chars().take(50).collect();
+                    tracing::warn!("Screenshot has unrecognized format. Prefix: {}", prefix);
+                    false
+                };
+                
+                if !image_added {
+                    tracing::warn!("Screenshot was NOT included in AI request due to format mismatch");
                 }
+            } else {
+                tracing::debug!("No screenshot in context");
             }
         }
 

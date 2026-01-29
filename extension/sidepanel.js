@@ -568,11 +568,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (screenshotToggle.checked) {
         console.log('[Sidepanel] Capturing context with screenshot...');
         await chrome.runtime.sendMessage({ action: 'forceContextUpdate' });
-        await new Promise(r => setTimeout(r, 200));
       } else {
         console.log('[Sidepanel] Skipping screenshot capture (toggle OFF)');
         await chrome.runtime.sendMessage({ action: 'updateContextNoScreenshot' });
-        await new Promise(r => setTimeout(r, 200));
       }
 
       // Prepare Custom Instruction
