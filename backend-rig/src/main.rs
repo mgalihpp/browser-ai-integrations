@@ -11,8 +11,10 @@ mod models;
 use crate::models::{ChatRequest, ChatResponse, HealthResponse};
 
 use rig::completion::Prompt;
+use rig::message::{ImageMediaType, Message, UserContent};
 use rig::prelude::*;
 use rig::providers::gemini;
+use rig::OneOrMany;
 
 struct AppState {
     gemini_client: gemini::Client,
@@ -43,9 +45,38 @@ async fn chat_handler(
         .preamble(&preamble)
         .build();
 
+    // Prepare content parts
+    let mut parts = vec![UserContent::text(request.message.clone())];
+
+    // Add image if present
+    if let Some(img_data) = &request.image {
+        tracing::info!("Processing image from request");
+        let (media_type, data) = if let Some(stripped) = img_data.strip_prefix("data:image/png;base64,") {
+            (ImageMediaType::PNG, stripped)
+        } else if let Some(stripped) = img_data.strip_prefix("data:image/jpeg;base64,") {
+            (ImageMediaType::JPEG, stripped)
+        } else if let Some(stripped) = img_data.strip_prefix("data:image/webp;base64,") {
+            (ImageMediaType::WEBP, stripped)
+        } else {
+            tracing::warn!("Unrecognized image format, attempting as JPEG");
+            if let Some(comma_pos) = img_data.find(',') {
+                (ImageMediaType::JPEG, &img_data[comma_pos + 1..])
+            } else {
+                (ImageMediaType::JPEG, img_data.as_str())
+            }
+        };
+
+        parts.push(UserContent::image_base64(data, Some(media_type), None));
+    }
+
+    let prompt = Message::User {
+        content: OneOrMany::many(parts).expect("Parts list is not empty"),
+    };
+
     // Prompt the agent and handle the response
-    match agent.prompt(&request.message).await {
+    match agent.prompt(prompt).await {
         Ok(response) => Json(ChatResponse {
+
             response,
             prompt_tokens: None,
             response_tokens: None,
