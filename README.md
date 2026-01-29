@@ -103,17 +103,71 @@ Backend ditulis menggunakan Rust dan framework Axum.
 
 ## Panduan Kontribusi
 
-Kami menggunakan Prettier dan Rustfmt untuk menjaga konsistensi format kode. Untuk berkontribusi:
+Terima kasih telah tertarik untuk berkontribusi pada **Browser AI Assistant**! Kami menyambut segala bentuk kontribusi, mulai dari laporan bug, saran fitur, hingga perbaikan kode.
 
-1.  Pastikan Anda memiliki **Node.js** terinstal.
-2.  Jalankan `npm install` di root direktori untuk menginstal alat pengembangan (Husky, Prettier).
-3.  Format kode akan diterapkan secara otomatis saat Anda melakukan `git commit` melalui git hooks.
-4.  Jika Anda menggunakan VS Code, sangat disarankan untuk menginstal ekstensi yang direkomendasikan dan mengaktifkan fitur "Format on Save".
+### Alur Kerja Kontribusi
 
-Perintah manual yang tersedia:
+1.  **Fork** repositori ini ke akun GitHub Anda.
+2.  **Clone** hasil fork tersebut ke mesin lokal:
+    ```bash
+    git clone https://github.com/USERNAME/browser-ai-integrations.git
+    ```
+3.  **Buat Branch** baru untuk fitur atau perbaikan Anda:
+    ```bash
+    git checkout -b feat/nama-fitur-anda
+    # atau
+    git checkout -b fix/deskripsi-perbaikan
+    ```
+4.  **Lakukan Perubahan** dan pastikan kode Anda mengikuti standar kualitas kami.
+5.  **Commit** perubahan Anda dengan pesan yang deskriptif. Kami menyarankan format [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).
+6.  **Push** ke repositori fork Anda:
+    ```bash
+    git push origin HEAD
+    ```
+7.  **Buka Pull Request** dari branch Anda ke branch `master` kami.
 
-- `npm run format`: Format file Frontend (JS, HTML, CSS, JSON).
-- `npm run format:rust`: Format file Backend (Rust).
+### Standar Pengembangan
+
+Untuk menjaga konsistensi dan kualitas kode, kami menerapkan standar berikut:
+
+#### 🛠️ Alat Pengembangan
+
+Kami menggunakan **Node.js** untuk mengelola alat pemformatan dan git hooks.
+
+- Pastikan Anda telah menjalankan `npm install` di root direktori untuk menginstal **Husky**, **Lint-staged**, dan **Prettier**.
+
+#### 🎨 Pemformatan Kode
+
+Kami mewajibkan semua file diformat dengan benar sebelum dikirimkan.
+
+- **Frontend (Extension)**: Menggunakan Prettier (indentasi 2 spasi).
+- **Backend (Rust)**: Menggunakan Rustfmt (indentasi 4 spasi, Edisi 2024).
+- **Otomatisasi**: Git hooks (Husky) akan secara otomatis memformat file yang di-stage saat Anda melakukan `git commit`.
+
+Jika Anda ingin menjalankan pemformatan secara manual:
+
+```bash
+npm run format       # Format file Frontend (JS, HTML, CSS, JSON)
+npm run format:rust  # Format file Backend (Rust)
+```
+
+#### 💻 Pengaturan Editor (VS Code)
+
+Jika Anda menggunakan VS Code, proyek ini sudah dilengkapi dengan pengaturan workspace:
+
+- **Format on Save**: Aktif secara otomatis.
+- **Ekstensi Rekomendasi**: Pastikan untuk menginstal ekstensi yang disarankan (Prettier, Rust Analyzer, EditorConfig) saat pertama kali membuka folder ini.
+
+### Melaporkan Masalah
+
+Jika Anda menemukan bug atau memiliki ide fitur, silakan buka **Issue** baru dengan informasi berikut:
+
+- Deskripsi singkat tentang masalah/fitur.
+- Langkah-langkah untuk mereproduksi (untuk bug).
+- Ekspektasi perilaku.
+- Screenshot (jika ada).
+
+---
 
 ## Lisensi
 
