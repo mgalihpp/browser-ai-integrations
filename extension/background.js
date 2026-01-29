@@ -245,6 +245,14 @@ async function setupOffscreenDocument(path) {
 }
 
 async function captureFullPage(tabId) {
+  // 0. Save original scroll position BEFORE any scrolling
+  let originalScroll = null;
+  try {
+    originalScroll = await chrome.tabs.sendMessage(tabId, { action: 'getScrollPosition' });
+  } catch (e) {
+    console.log('[Background] Could not get original scroll position');
+  }
+
   // 1. Get metrics
   let metrics = null;
   try {
@@ -267,53 +275,62 @@ async function captureFullPage(tabId) {
     return await chrome.tabs.captureVisibleTab(null, { format: 'jpeg', quality: 50 });
   }
 
-  // 2. Setup offscreen
-  await setupOffscreenDocument('offscreen.html');
-  
-  // 3. Init canvas
-  await chrome.runtime.sendMessage({
-    target: 'offscreen',
-    type: 'init',
-    width: metrics.width,
-    height: metrics.height
-  });
-  
-  // 4. Scroll and capture
-  let y = 0;
-  // Limit iterations to prevent infinite loops
-  const maxIterations = 50; 
-  let iterations = 0;
-  
-  while (y < metrics.height && iterations < maxIterations) {
-    iterations++;
+  // Use try...finally to ensure scroll position is always restored
+  try {
+    // 2. Setup offscreen
+    await setupOffscreenDocument('offscreen.html');
     
-    await chrome.tabs.sendMessage(tabId, { action: 'scrollTo', x: 0, y: y });
-    // Wait for scroll/render
-    await new Promise(r => setTimeout(r, 150));
-    
-    const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
-    
+    // 3. Init canvas
     await chrome.runtime.sendMessage({
       target: 'offscreen',
-      type: 'draw',
-      dataUrl,
-      x: 0,
-      y: y,
-      width: metrics.viewportWidth,
-      height: metrics.viewportHeight
+      type: 'init',
+      width: metrics.width,
+      height: metrics.height
     });
     
-    y += metrics.viewportHeight;
+    // 4. Scroll and capture
+    let y = 0;
+    // Limit iterations to prevent infinite loops
+    const maxIterations = 50; 
+    let iterations = 0;
+    
+    while (y < metrics.height && iterations < maxIterations) {
+      iterations++;
+      
+      await chrome.tabs.sendMessage(tabId, { action: 'scrollTo', x: 0, y: y });
+      // Wait for scroll/render
+      await new Promise(r => setTimeout(r, 150));
+      
+      const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
+      
+      await chrome.runtime.sendMessage({
+        target: 'offscreen',
+        type: 'draw',
+        dataUrl,
+        x: 0,
+        y: y,
+        width: metrics.viewportWidth,
+        height: metrics.viewportHeight
+      });
+      
+      y += metrics.viewportHeight;
+    }
+    
+    // 5. Get result
+    const response = await chrome.runtime.sendMessage({
+      target: 'offscreen',
+      type: 'getResult'
+    });
+    
+    return response.result;
+  } finally {
+    // Restore original scroll position (not hardcoded 0,0)
+    const restoreX = originalScroll?.x || 0;
+    const restoreY = originalScroll?.y || 0;
+    try {
+      await chrome.tabs.sendMessage(tabId, { action: 'scrollTo', x: restoreX, y: restoreY });
+    } catch (e) {
+      console.log('[Background] Could not restore scroll position');
+    }
   }
-  
-  // 5. Get result
-  const response = await chrome.runtime.sendMessage({
-    target: 'offscreen',
-    type: 'getResult'
-  });
-  
-  // Restore scroll
-  await chrome.tabs.sendMessage(tabId, { action: 'scrollTo', x: 0, y: 0 });
-  
-  return response.result;
 }
