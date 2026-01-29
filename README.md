@@ -5,6 +5,7 @@
 Browser AI Assistant adalah proyek integrasi AI dengan browser yang memungkinkan Anda untuk berinteraksi dengan asisten cerdas yang sadar akan konteks halaman web yang sedang Anda buka.
 
 Sistem ini terdiri dari dua komponen utama:
+
 1. **Backend (Rust)**: Server yang menangani logika AI, memproses konteks halaman, dan berkomunikasi dengan API Google Gemini.
 2. **Browser Extension**: Ekstensi Chrome yang menangkap konten halaman dan screenshot untuk dikirim ke backend.
 
@@ -29,28 +30,33 @@ Sistem ini terdiri dari dua komponen utama:
 Backend ditulis menggunakan Rust dan framework Axum.
 
 1. Masuk ke direktori backend:
+
    ```bash
    cd backend
    ```
 
 2. Buat file `.env` di dalam folder `backend` dan isi dengan API Key Anda:
+
    ```env
    GOOGLE_API_KEY=api_key_gemini_anda_disini
    ```
 
 3. Jalankan server:
-   
+
    Mode Development:
+
    ```bash
    cargo run
    ```
-   
+
    Mode Release (Lebih Cepat & Recommended):
+
    ```bash
    ./start.sh
    # atau
    cd backend && cargo run --release
    ```
+
    Server akan berjalan di `http://localhost:3000`.
 
 ### 2. Setup Extension
