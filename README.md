@@ -101,6 +101,20 @@ Backend ditulis menggunakan Rust dan framework Axum.
 - **AI Model**: Google Gemini 2.5 Flash.
 - **Frontend**: HTML, JavaScript (Vanilla), Chrome Extension API (Manifest V3).
 
+## Panduan Kontribusi
+
+Kami menggunakan Prettier dan Rustfmt untuk menjaga konsistensi format kode. Untuk berkontribusi:
+
+1.  Pastikan Anda memiliki **Node.js** terinstal.
+2.  Jalankan `npm install` di root direktori untuk menginstal alat pengembangan (Husky, Prettier).
+3.  Format kode akan diterapkan secara otomatis saat Anda melakukan `git commit` melalui git hooks.
+4.  Jika Anda menggunakan VS Code, sangat disarankan untuk menginstal ekstensi yang direkomendasikan dan mengaktifkan fitur "Format on Save".
+
+Perintah manual yang tersedia:
+
+- `npm run format`: Format file Frontend (JS, HTML, CSS, JSON).
+- `npm run format:rust`: Format file Backend (Rust).
+
 ## Lisensi
 
 Proyek ini dibuat untuk tujuan pembelajaran dan pengembangan. Silakan gunakan dan modifikasi sesuai kebutuhan.
