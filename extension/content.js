@@ -179,7 +179,189 @@ function extractPageContent() {
   };
 }
 
+// --- DomTreeGenerator (Snapshot System) ---
+
+const INTERACTIVE_SELECTORS = [
+  'a[href]',
+  'button',
+  'input',
+  'select',
+  'textarea',
+  '[role="button"]',
+  '[role="link"]',
+  '[role="checkbox"]',
+  '[role="menuitem"]',
+  '[role="tab"]',
+  '[tabindex]:not([tabindex="-1"])',
+];
+
+/**
+ * Checks if an element is visible in the viewport and not hidden by styles
+ */
+function isElementVisible(el) {
+  const rect = el.getBoundingClientRect();
+  const style = window.getComputedStyle(el);
+
+  const isVisible =
+    style.display !== 'none' &&
+    style.visibility !== 'hidden' &&
+    style.opacity !== '0' &&
+    rect.width > 0 &&
+    rect.height > 0;
+
+  if (!isVisible) return false;
+
+  // Check if in viewport
+  return (
+    rect.top < window.innerHeight &&
+    rect.bottom > 0 &&
+    rect.left < window.innerWidth &&
+    rect.right > 0
+  );
+}
+
+/**
+ * Determines if an element is interactive
+ */
+function isInteractive(el) {
+  if (el.hasAttribute('data-browser-agent-ui')) return false;
+
+  if (INTERACTIVE_SELECTORS.some((selector) => el.matches(selector))) {
+    return true;
+  }
+
+  // Also check for cursor: pointer as a fallback (careful with body/html)
+  const style = window.getComputedStyle(el);
+  if (
+    style.cursor === 'pointer' &&
+    el.tagName !== 'BODY' &&
+    el.tagName !== 'HTML'
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Gets the accessible name of an element
+ */
+function getAccessibleName(el) {
+  // Try aria-label
+  let name = el.getAttribute('aria-label');
+  if (name) return name.trim();
+
+  // Try aria-labelledby
+  const labelledBy = el.getAttribute('aria-labelledby');
+  if (labelledBy) {
+    const labelEl = document.getElementById(labelledBy);
+    if (labelEl) return labelEl.innerText.trim();
+  }
+
+  // Try alt (for images)
+  name = el.getAttribute('alt');
+  if (name) return name.trim();
+
+  // Try title
+  name = el.getAttribute('title');
+  if (name) return name.trim();
+
+  // Try placeholder (for inputs)
+  name = el.getAttribute('placeholder');
+  if (name) return name.trim();
+
+  // Try value (for buttons)
+  if (
+    el.tagName === 'INPUT' &&
+    (el.type === 'button' || el.type === 'submit')
+  ) {
+    name = el.value;
+    if (name) return name.trim();
+  }
+
+  // Fallback to text content
+  return el.innerText?.trim() || el.textContent?.trim() || '';
+}
+
+/**
+ * Gets the ARIA role or implicit role of an element
+ */
+function getElementRole(el) {
+  const role = el.getAttribute('role');
+  if (role) return role;
+
+  const tagName = el.tagName.toLowerCase();
+  switch (tagName) {
+    case 'a':
+      return 'link';
+    case 'button':
+      return 'button';
+    case 'input':
+      if (el.type === 'checkbox') return 'checkbox';
+      if (el.type === 'radio') return 'radio';
+      return 'textbox';
+    case 'textarea':
+      return 'textbox';
+    case 'select':
+      return 'combobox';
+    default:
+      return tagName;
+  }
+}
+
+/**
+ * Gets the bounding box of an element relative to the viewport
+ */
+function getElementBounds(el) {
+  const rect = el.getBoundingClientRect();
+  return {
+    x: Math.round(rect.left),
+    y: Math.round(rect.top),
+    width: Math.round(rect.width),
+    height: Math.round(rect.height),
+  };
+}
+
+/**
+ * Generates a snapshot of the current page's interactive elements
+ */
+function generateSnapshot() {
+  const tree = [];
+  let refId = 1;
+
+  function traverse(element) {
+    if (!element) return;
+
+    // Skip our own UI
+    if (element.hasAttribute('data-browser-agent-ui')) return;
+
+    // Fast path: skip elements that are explicitly hidden
+    const style = window.getComputedStyle(element);
+    if (style.display === 'none' || style.visibility === 'hidden') return;
+
+    if (isInteractive(element) && isElementVisible(element)) {
+      tree.push({
+        id: refId++,
+        role: getElementRole(element),
+        name: getAccessibleName(element),
+        tag: element.tagName,
+        bounds: getElementBounds(element),
+      });
+    }
+
+    // Continue DFS even if current element is not interactive
+    // (it might have interactive children)
+    for (const child of element.children) {
+      traverse(child);
+    }
+  }
+
+  traverse(document.body);
+  return { tree };
+}
+
 // Listen for messages from background script
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'getContext') {
     try {
@@ -196,6 +378,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         title: document.title,
         url: window.location.href,
       });
+    }
+  } else if (message.action === 'getSnapshot') {
+    try {
+      const snapshot = generateSnapshot();
+      console.log(
+        '[Content] Sending snapshot, elements found:',
+        snapshot.tree.length
+      );
+      sendResponse(snapshot);
+    } catch (e) {
+      console.error('[Content] Error generating snapshot:', e);
+      sendResponse({ tree: [] });
     }
   } else if (message.action === 'getMetrics') {
     sendResponse({
