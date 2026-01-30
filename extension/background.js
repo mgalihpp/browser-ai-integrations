@@ -69,6 +69,67 @@ function stopContextUpdates() {
   }
 }
 
+/**
+ * Dispatches an action command to the active tab's content script.
+ * If the content script is not loaded, it attempts to inject it.
+ * @param {Object} command The action command from the backend
+ * @returns {Promise<Object>} The ActionResult object
+ */
+async function dispatchToActiveTab(command) {
+  try {
+    // Get active tab
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+    if (!tab || !tab.id) {
+      return { success: false, error: 'No active tab found' };
+    }
+
+    // Send to content script
+    try {
+      const result = await chrome.tabs.sendMessage(tab.id, {
+        action: 'execute',
+        command: command,
+      });
+      return (
+        result || { success: false, error: 'No response from content script' }
+      );
+    } catch (e) {
+      console.log(
+        '[Background] Content script not responding, attempting injection...'
+      );
+      // Content script might not be loaded, try injecting
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ['content.js'],
+        });
+        // Wait a bit for the script to initialize
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        const result = await chrome.tabs.sendMessage(tab.id, {
+          action: 'execute',
+          command: command,
+        });
+        return (
+          result || {
+            success: false,
+            error: 'No response from content script after injection',
+          }
+        );
+      } catch (injectError) {
+        return {
+          success: false,
+          error: `Could not reach content script: ${injectError.message}`,
+        };
+      }
+    }
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
 // Capture current tab context and send to backend
 async function captureAndSendContext(options = {}) {
   // Handle legacy boolean argument (backwards compatibility)
