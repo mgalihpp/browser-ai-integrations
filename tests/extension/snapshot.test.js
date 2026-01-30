@@ -14,7 +14,7 @@ global.chrome = {
 global.scrollTo = jest.fn();
 
 // Load content.js
-const contentJsPath = path.resolve(__dirname, '../content.js');
+const contentJsPath = path.resolve(__dirname, '../../extension/content.js');
 const contentJsCode = fs.readFileSync(contentJsPath, 'utf8');
 
 // Use eval to run the script in the test context

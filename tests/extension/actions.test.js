@@ -17,7 +17,7 @@ global.scrollTo = jest.fn();
 global.onNavigate = jest.fn();
 
 // Load content.js and hack it for navigate_to testing
-const contentJsPath = path.resolve(__dirname, '../content.js');
+const contentJsPath = path.resolve(__dirname, '../../extension/content.js');
 let contentJsCode = fs.readFileSync(contentJsPath, 'utf8');
 contentJsCode = contentJsCode.replace(
   'window.location.assign(command.url)',

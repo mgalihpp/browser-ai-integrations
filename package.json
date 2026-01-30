@@ -14,7 +14,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "format:rust": "cargo fmt --manifest-path backend/Cargo.toml --all",
-    "test": "jest -c extension/jest.config.js"
+    "test": "jest -c tests/extension/jest.config.js"
   },
   "lint-staged": {
     "*.{js,html,css,json,md}": "prettier --write",
