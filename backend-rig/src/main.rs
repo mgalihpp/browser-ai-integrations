@@ -1,4 +1,3 @@
-use axum::extract::{Json, State};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
@@ -15,44 +14,12 @@ mod state;
 mod tools;
 mod utils;
 
-use crate::models::{ChatRequest, ChatResponse};
 #[cfg(test)]
 use crate::models::HealthResponse;
 #[cfg(test)]
 use rig::message::ImageMediaType;
 
 use crate::state::AppState;
-
-
-pub async fn chat_handler(
-    State(state): State<Arc<AppState>>,
-    Json(request): Json<ChatRequest>,
-) -> Json<ChatResponse> {
-    tracing::info!("Chat request received: {}", request.message);
-
-    match state.llm.complete(
-        &request.message,
-        request.custom_instruction.as_deref(),
-        request.image.as_deref()
-    ).await {
-        Ok(response) => Json(ChatResponse {
-            response,
-            prompt_tokens: None,
-            response_tokens: None,
-            total_tokens: None,
-        }),
-        Err(e) => {
-            tracing::error!("LLM error: {}", e);
-            Json(ChatResponse {
-                response: format!("Error from AI service: {}", e),
-                prompt_tokens: None,
-                response_tokens: None,
-                total_tokens: None,
-            })
-        }
-    }
-}
-
 
 
 
@@ -83,6 +50,7 @@ mod tests {
     use super::*;
     use serde_json;
     use crate::llm::parse_image_data;
+    use crate::models::{ChatRequest, ChatResponse};
 
     #[test]
     fn test_health_response_serialize() {

@@ -8,7 +8,6 @@ use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 use crate::state::AppState;
 use crate::handler::agent_handler;
-use crate::chat_handler;
 use crate::models::WsMessage;
 
 pub fn app_router(state: Arc<AppState>) -> Router {
@@ -19,7 +18,7 @@ pub fn app_router(state: Arc<AppState>) -> Router {
     
     Router::new()
         .route("/health", get(health_check))
-        .route("/api/chat", post(chat_handler))  // Keep existing for now
+        .route("/api/chat", post(agent_handler::run_agent))
         .route("/agent/run", post(agent_handler::run_agent))
         .route("/ws", get(ws_handler))
         .with_state(state)

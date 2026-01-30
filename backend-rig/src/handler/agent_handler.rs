@@ -19,7 +19,11 @@ pub async fn run_agent(
     
     if request.stream {
         // Return SSE stream
-        let llm_stream = state.llm.stream(&request.query, None, None);
+        let llm_stream = state.llm.stream(
+            &request.query,
+            request.custom_instruction.as_deref(),
+            request.image.as_deref(),
+        );
         
         let stream = stream! {
             let mut llm_stream = llm_stream;
@@ -35,7 +39,11 @@ pub async fn run_agent(
         Ok(Sse::new(stream).into_response())
     } else {
         // Return JSON
-        let response = state.llm.complete(&request.query, None, None)
+        let response = state.llm.complete(
+            &request.query,
+            request.custom_instruction.as_deref(),
+            request.image.as_deref(),
+        )
             .await
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
 
