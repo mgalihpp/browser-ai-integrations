@@ -502,6 +502,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Update content of an existing assistant bubble (for streaming)
+  function updateAssistantBubble(bubbleDiv, text) {
+    bubbleDiv.innerHTML = parseMarkdown(text);
+
+    // Render Math (KaTeX)
+    if (typeof renderMathInElement !== 'undefined') {
+      renderMathInElement(bubbleDiv, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false },
+          { left: '\\(', right: '\\)', display: false },
+          { left: '\\[', right: '\\]', display: true },
+        ],
+        throwOnError: false,
+      });
+    }
+
+    // Enhance Code Blocks (Copy button, etc)
+    enhanceCodeBlocks(bubbleDiv);
+  }
+
   function clearChat() {
     chatContainer.innerHTML = '';
     // Show quick actions when cleared
@@ -668,40 +689,96 @@ document.addEventListener('DOMContentLoaded', () => {
         instruction = currentSession.customInstruction;
       }
 
-      const response = await fetch('http://localhost:3000/api/chat', {
+      const response = await fetch('http://localhost:3000/agent/run', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           message: text,
+          stream: true,
           custom_instruction: instruction || undefined,
           image: imageToSend || undefined,
         }),
       });
 
-      hideTyping();
-
       if (!response.ok) {
+        hideTyping();
         throw new Error('Failed to get response');
       }
 
-      const data = await response.json();
+      // Handle SSE Stream
+      if (window.readSSEStream) {
+        let fullText = '';
+        let bubbleDiv = null;
+        let renderTimeout = null;
+        let isFirstToken = true;
 
-      const assistantMsg = {
-        role: 'assistant',
-        text: data.response || 'Tidak ada respons',
-        timestamp: Date.now(),
-        tokens: {
-          prompt: data.prompt_tokens,
-          response: data.response_tokens,
-          total: data.total_tokens,
-        },
-      };
+        for await (const event of window.readSSEStream(response)) {
+          if (event.type === 'data') {
+            if (isFirstToken) {
+              hideTyping();
+              // Create assistant bubble manually to allow streaming updates
+              const messageDiv = document.createElement('div');
+              messageDiv.className = 'message assistant';
+              bubbleDiv = document.createElement('div');
+              bubbleDiv.className = 'bubble';
+              messageDiv.appendChild(bubbleDiv);
+              chatContainer.appendChild(messageDiv);
+              isFirstToken = false;
+            }
 
-      renderMessage(assistantMsg);
-      SessionManager.addMessageToSession(currentSession.id, assistantMsg);
-      updateStatus(true);
+            fullText += event.value;
+
+            // Debounce rendering
+            clearTimeout(renderTimeout);
+            renderTimeout = setTimeout(() => {
+              if (bubbleDiv) {
+                updateAssistantBubble(bubbleDiv, fullText);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+              }
+            }, 100);
+          } else if (event.type === 'error') {
+            console.error('Stream error:', event.value);
+            // Optional: Show error in bubble?
+          } else if (event.type === 'done') {
+            clearTimeout(renderTimeout);
+            if (!bubbleDiv) {
+              hideTyping(); // In case no data received
+            } else {
+              updateAssistantBubble(bubbleDiv, fullText);
+              chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+
+            const assistantMsg = {
+              role: 'assistant',
+              text: fullText || 'Tidak ada respons',
+              timestamp: Date.now(),
+            };
+            SessionManager.addMessageToSession(currentSession.id, assistantMsg);
+            updateStatus(true);
+          }
+        }
+      } else {
+        // Fallback for non-streaming
+        hideTyping();
+        const data = await response.json();
+
+        const assistantMsg = {
+          role: 'assistant',
+          text: data.response || 'Tidak ada respons',
+          timestamp: Date.now(),
+          tokens: {
+            prompt: data.prompt_tokens,
+            response: data.response_tokens,
+            total: data.total_tokens,
+          },
+        };
+
+        renderMessage(assistantMsg);
+        SessionManager.addMessageToSession(currentSession.id, assistantMsg);
+        updateStatus(true);
+      }
     } catch (error) {
       hideTyping();
       console.error('Error sending message:', error);
