@@ -51,9 +51,25 @@ async function sendMessage() {
       throw new Error('Failed to get response');
     }
 
-    const data = await response.json();
-    addMessage(data.response || 'No response received');
-    updateStatus(true);
+    let fullText = '';
+    let messageDiv = null;
+
+    for await (const event of window.readSSEStream(response)) {
+      if (event.type === 'data') {
+        if (!messageDiv) {
+          messageDiv = document.createElement('div');
+          messageDiv.className = 'message assistant';
+          chatContainer.appendChild(messageDiv);
+        }
+        fullText += event.value;
+        messageDiv.textContent = fullText;
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      } else if (event.type === 'error') {
+        addMessage('Error: ' + event.value);
+      } else if (event.type === 'done') {
+        updateStatus(true);
+      }
+    }
   } catch (error) {
     console.error('Error sending message:', error);
     addMessage(
