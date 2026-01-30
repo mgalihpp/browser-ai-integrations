@@ -41,8 +41,25 @@ function connectWebSocket() {
       console.error('[Background] WebSocket error:', error);
     };
 
-    ws.onmessage = (event) => {
+    ws.onmessage = async (event) => {
       console.log('[Background] Message received:', event.data);
+      try {
+        const message = JSON.parse(event.data);
+
+        if (message.type === 'ActionCommand') {
+          console.log('[Background] ActionCommand received:', message.data);
+          const result = await dispatchToActiveTab(message.data);
+          // Send ActionResult back to backend
+          const response = JSON.stringify({
+            type: 'ActionResult',
+            data: result,
+          });
+          ws.send(response);
+          console.log('[Background] ActionResult sent:', result);
+        }
+      } catch (e) {
+        console.error('[Background] Error processing message:', e);
+      }
     };
   } catch (error) {
     console.error('[Background] Failed to connect WebSocket:', error);
