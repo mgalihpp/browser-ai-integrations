@@ -707,6 +707,34 @@ document.addEventListener('DOMContentLoaded', () => {
         instruction = currentSession.customInstruction;
       }
 
+      // Fetch interactive elements if in tool-enabled mode
+      let interactiveElements = undefined;
+      if (wsSessionId) {
+        try {
+          const [tab] = await chrome.tabs.query({
+            active: true,
+            currentWindow: true,
+          });
+          if (tab?.id) {
+            const snapshot = await chrome.tabs.sendMessage(tab.id, {
+              action: 'getSnapshot',
+            });
+            if (snapshot && snapshot.tree) {
+              interactiveElements = snapshot.tree.slice(0, 300).map((el) => ({
+                id: el.id,
+                role: el.role,
+                name: el.name,
+              }));
+              console.log(
+                `[Sidepanel] Sending ${interactiveElements.length} interactive elements`
+              );
+            }
+          }
+        } catch (e) {
+          console.error('[Sidepanel] Failed to fetch interactive elements:', e);
+        }
+      }
+
       const response = await fetch('http://localhost:3000/agent/run', {
         method: 'POST',
         headers: {
@@ -718,6 +746,7 @@ document.addEventListener('DOMContentLoaded', () => {
           custom_instruction: instruction || undefined,
           image: imageToSend || undefined,
           session_id: wsSessionId || undefined,
+          interactive_elements: interactiveElements,
         }),
       });
 

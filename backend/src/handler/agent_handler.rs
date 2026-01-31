@@ -14,10 +14,10 @@ use tokio::sync::oneshot;
 use tokio::time::{timeout, Duration};
 use uuid::Uuid;
 
-use crate::dtos::AgentRequest;
+use crate::dtos::{AgentRequest, InteractiveElementDto};
 use crate::state::AppState;
 use crate::models::ChatResponse;
-use crate::models::ws::{ActionCommand, ActionResult, WsMessage};
+use crate::models::ws::{ActionCommand, WsMessage};
 use crate::tools::browser::{NavigateTool, ClickTool, TypeTool, ScrollTool, NavigateArgs, ClickArgs, TypeArgs, ScrollArgs};
 
 // --- Error Type ---
@@ -168,6 +168,14 @@ async fn execute_tool(state: &Arc<AppState>, session_id: &str, command: ActionCo
     }
 }
 
+pub fn format_interactive_elements(elements: &[InteractiveElementDto]) -> String {
+    elements
+        .iter()
+        .map(|e| format!("- Ref {}: {} ({})", e.id, e.name, e.role))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 // --- Main Handler ---
 
 pub async fn run_agent(
@@ -184,8 +192,19 @@ pub async fn run_agent(
         
         let client = gemini::Client::from_env(); // Create fresh client to build agent
         
+        let mut preamble = "You are a browser assistant. You can control the browser using tools. Always use tools to answer if possible.".to_string();
+
+        if let Some(elements) = &request.interactive_elements {
+            if !elements.is_empty() {
+                let formatted_elements = format_interactive_elements(elements);
+                preamble.push_str("\n\n## Available Interactive Elements\n");
+                preamble.push_str(&formatted_elements);
+                preamble.push_str("\n\nWhen asked to click by name, find the matching element above and use its Ref ID.");
+            }
+        }
+
         let agent = client.agent(gemini::completion::GEMINI_2_5_FLASH)
-            .preamble("You are a browser assistant. You can control the browser using tools. Always use tools to answer if possible.")
+            .preamble(&preamble)
             .tool(WsNavigateTool { state: state.clone(), session_id: session_id.clone() })
             .tool(WsClickTool { state: state.clone(), session_id: session_id.clone() })
             .tool(WsTypeTool { state: state.clone(), session_id: session_id.clone() })
