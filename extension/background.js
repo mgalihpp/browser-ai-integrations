@@ -122,9 +122,65 @@ async function dispatchToActiveTab(command) {
       return { success: false, error: 'No active tab found' };
     }
 
-    // Send to content script
+    // For navigation commands, we handle specially
+    if (command.type === 'navigate_to') {
+      try {
+        // Send navigation command
+        await chrome.tabs.sendMessage(tab.id, {
+          action: 'execute',
+          command: command,
+        });
+      } catch (e) {
+        // Content script might not be loaded, try direct navigation via tabs API
+        console.log('[Background] Using tabs.update for navigation');
+        await chrome.tabs.update(tab.id, { url: command.url });
+      }
+
+      // Wait for page to finish loading (max 10 seconds)
+      const waitForLoad = () =>
+        new Promise((resolve) => {
+          let resolved = false;
+          const timeout = setTimeout(() => {
+            if (!resolved) {
+              resolved = true;
+              resolve();
+            }
+          }, 10000);
+
+          const listener = (tabId, changeInfo) => {
+            if (tabId === tab.id && changeInfo.status === 'complete') {
+              chrome.tabs.onUpdated.removeListener(listener);
+              clearTimeout(timeout);
+              if (!resolved) {
+                resolved = true;
+                resolve();
+              }
+            }
+          };
+          chrome.tabs.onUpdated.addListener(listener);
+        });
+
+      await waitForLoad();
+      // Give the page a moment to fully render
+      await new Promise((r) => setTimeout(r, 500));
+
+      return { success: true, data: { navigated_to: command.url } };
+    }
+
+    // For other commands, send to content script with injection fallback
+    return await sendToContentScript(tab.id, command);
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+/**
+ * Sends a command to content script with injection fallback
+ */
+async function sendToContentScript(tabId, command, retries = 2) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const result = await chrome.tabs.sendMessage(tab.id, {
+      const result = await chrome.tabs.sendMessage(tabId, {
         action: 'execute',
         command: command,
       });
@@ -133,37 +189,33 @@ async function dispatchToActiveTab(command) {
       );
     } catch (e) {
       console.log(
-        '[Background] Content script not responding, attempting injection...'
+        `[Background] Content script not responding (attempt ${attempt + 1}/${retries + 1}), injecting...`
       );
-      // Content script might not be loaded, try injecting
+
       try {
         await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
+          target: { tabId: tabId },
           files: ['content.js'],
         });
-        // Wait a bit for the script to initialize
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
-        const result = await chrome.tabs.sendMessage(tab.id, {
-          action: 'execute',
-          command: command,
-        });
-        return (
-          result || {
-            success: false,
-            error: 'No response from content script after injection',
-          }
+        // Wait for the script to initialize
+        await new Promise((resolve) =>
+          setTimeout(resolve, 200 * (attempt + 1))
         );
       } catch (injectError) {
-        return {
-          success: false,
-          error: `Could not reach content script: ${injectError.message}`,
-        };
+        if (attempt === retries) {
+          return {
+            success: false,
+            error: `Could not inject content script: ${injectError.message}`,
+          };
+        }
       }
     }
-  } catch (e) {
-    return { success: false, error: e.message };
   }
+
+  return {
+    success: false,
+    error: 'Failed to communicate with content script after retries',
+  };
 }
 
 // Capture current tab context and send to backend

@@ -413,18 +413,35 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Fetch WebSocket session ID from background script
-  async function fetchWsSessionId() {
-    try {
-      const response = await chrome.runtime.sendMessage({
-        action: 'getWsSessionId',
-      });
-      if (response && response.sessionId) {
-        wsSessionId = response.sessionId;
-        console.log('[Sidepanel] Got session ID:', wsSessionId);
+  async function fetchWsSessionId(retries = 3, delay = 500) {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const response = await chrome.runtime.sendMessage({
+          action: 'getWsSessionId',
+        });
+        if (response && response.sessionId) {
+          wsSessionId = response.sessionId;
+          console.log('[Sidepanel] Got session ID:', wsSessionId);
+          return true;
+        }
+        // Session ID not available yet, wait and retry
+        if (attempt < retries) {
+          console.log(
+            `[Sidepanel] Session ID not ready, retrying (${attempt}/${retries})...`
+          );
+          await new Promise((r) => setTimeout(r, delay * attempt));
+        }
+      } catch (e) {
+        console.error('[Sidepanel] Failed to get session ID:', e);
+        if (attempt < retries) {
+          await new Promise((r) => setTimeout(r, delay * attempt));
+        }
       }
-    } catch (e) {
-      console.error('[Sidepanel] Failed to get session ID:', e);
     }
+    console.warn(
+      '[Sidepanel] Could not get session ID after retries - tools will be disabled'
+    );
+    return false;
   }
 
   // Initialize theme
@@ -714,6 +731,18 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // Lazy fetching: Backend will request data via tools when needed
+
+      // Ensure we have session ID for tool-enabled mode
+      if (!wsSessionId) {
+        console.warn(
+          '[Sidepanel] No session ID yet, attempting to fetch again...'
+        );
+        await fetchWsSessionId();
+      }
+      console.log(
+        '[Sidepanel] Sending request with session_id:',
+        wsSessionId || 'NONE (will use legacy mode)'
+      );
 
       const response = await fetch('http://localhost:3000/agent/run', {
         method: 'POST',

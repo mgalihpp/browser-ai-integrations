@@ -352,6 +352,7 @@ pub async fn run_agent(
                 state: state.clone(),
                 session_id: session_id.clone(),
             })
+            .default_max_depth(20) // Allow up to 20 tool call rounds for complex actions
             .build();
 
         // Build the prompt - either text-only or text+image
@@ -399,6 +400,9 @@ pub async fn run_agent(
                     // Handle empty response error gracefully
                     if error_str.contains("empty") || error_str.contains("no message") {
                         "Maaf, saya tidak yakin tindakan apa yang harus dilakukan. Bisa tolong jelaskan lebih spesifik? Contoh:\n- \"isi field email dengan test@example.com\"\n- \"klik tombol Submit\"\n- \"buka halaman google.com\"".to_string()
+                    } else if error_str.contains("MaxDepth") || error_str.contains("depth") {
+                        // Tool execution failed after retries - likely a connection issue
+                        "Maaf, gagal menjalankan aksi browser. Pastikan:\n1. Extension Chrome sudah di-reload\n2. Halaman web sudah terbuka dan aktif\n3. Coba refresh halaman dan ulangi perintah".to_string()
                     } else {
                         return Err((StatusCode::INTERNAL_SERVER_ERROR, error_str));
                     }

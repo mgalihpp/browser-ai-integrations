@@ -130,30 +130,23 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                             );
                         }
                     }
-                    // Echo back as ActionResult (placeholder for actual execution simulation if needed)
-                    // In real usage, the frontend executes and sends ActionResult back.
-                    // This echo logic might be conflicting if both backend and frontend send ActionResult.
-                    // Assuming this echo is for testing without frontend, let's keep it but maybe conditional?
-                    // For now, I'll update it to match the new structure.
-                    let result = WsMessage::ActionResult(ActionResult {
-                        request_id: request_id.clone(),
-                        success: true,
-                        error: None,
-                        data: None,
-                    });
-                    // Only send echo if we are not expecting the frontend to do it?
-                    // Actually, if I am the backend, receiving ActionRequest from Frontend is weird.
-                    // Usually Backend sends ActionRequest to Frontend.
-                    // Why does ws_handler handle ActionCommand from Frontend?
-                    // Maybe for "user-initiated" actions from the extension UI?
-                    // If so, echo is fine.
-                    let _ = tx.send(result);
+                    // NOTE: ActionRequest FROM the client is unusual in this architecture.
+                    // The backend sends ActionRequest TO the client (via tools), and the client
+                    // sends ActionResult back. This handler is for when the client echoes an
+                    // ActionRequest (which shouldn't happen in normal flow).
+                    // DO NOT echo back - wait for the real ActionResult from frontend.
+                    tracing::warn!(
+                        "Received ActionRequest from client (unexpected): {}",
+                        request_id
+                    );
                 }
                 Ok(WsMessage::ActionResult(res)) => {
                     tracing::info!(
-                        "ActionResult received[{}]: success={}",
+                        "ActionResult received[{}]: success={}, error={:?}, data={:?}",
                         res.request_id,
-                        res.success
+                        res.success,
+                        res.error,
+                        res.data
                     );
                     let request_id = res.request_id.clone();
                     state.complete_pending_action(&request_id, res).await;

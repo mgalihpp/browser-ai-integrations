@@ -640,6 +640,30 @@ function executeAction(command) {
         window.scrollTo(command.x, command.y);
         return { success: true };
 
+      case 'get_page_content': {
+        const maxLength = command.max_length || 15000;
+        const content = extractPageContent(maxLength);
+        return {
+          success: true,
+          data: {
+            title: content.title,
+            url: content.url,
+            text: content.text,
+          },
+        };
+      }
+
+      case 'get_interactive_elements': {
+        const limit = command.limit || 300;
+        const snapshot = generateSnapshot(limit);
+        return {
+          success: true,
+          data: {
+            elements: snapshot.tree,
+          },
+        };
+      }
+
       default:
         return {
           success: false,
