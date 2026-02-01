@@ -1,5 +1,5 @@
 use crate::handler::agent_handler;
-use crate::models::ws::{ActionCommand, ActionResult, WsMessage};
+use crate::models::ws::{ActionCommand, WsMessage};
 use crate::state::AppState;
 use axum::{
     Router,
@@ -62,10 +62,10 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
     let session_id_clone = session_id.clone();
     let send_task = tokio::spawn(async move {
         while let Some(msg) = rx.recv().await {
-            if let Ok(text) = serde_json::to_string(&msg) {
-                if sink.send(Message::Text(text.into())).await.is_err() {
-                    break;
-                }
+            if let Ok(text) = serde_json::to_string(&msg)
+                && sink.send(Message::Text(text.into())).await.is_err()
+            {
+                break;
             }
         }
         tracing::info!("Send task terminated for session_id={}", session_id_clone);

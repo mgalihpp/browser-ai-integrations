@@ -38,7 +38,7 @@ fn test_agent_request_deserialization_full() {
         req.custom_instruction,
         Some("Be extremely brief".to_string())
     );
-    assert_eq!(req.stream, true);
+    assert!(req.stream);
     assert_eq!(req.session_id, Some("test-session".to_string()));
 }
 
@@ -48,7 +48,7 @@ fn test_agent_request_deserialization_defaults() {
     let json = r#"{"query": "Hello"}"#;
     let req: AgentRequest = serde_json::from_str(json).expect("Should support minimal payload");
     assert_eq!(req.query, "Hello");
-    assert_eq!(req.stream, false); // Default value from #[serde(default)]
+    assert!(!req.stream); // Default value from #[serde(default)]
     assert_eq!(req.session_id, None);
     assert_eq!(req.image, None);
     assert_eq!(req.custom_instruction, None);

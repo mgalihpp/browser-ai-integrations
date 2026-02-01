@@ -1,3 +1,3 @@
 pub mod agent;
 
-pub use agent::{AgentRequest, InteractiveElementDto};
+pub use agent::AgentRequest;

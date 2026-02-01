@@ -19,7 +19,7 @@ use tokio::sync::oneshot;
 use tokio::time::{Duration, timeout};
 use uuid::Uuid;
 
-use crate::dtos::{AgentRequest, InteractiveElementDto};
+use crate::dtos::AgentRequest;
 use crate::models::ChatResponse;
 use crate::models::ws::{ActionCommand, WsMessage};
 use crate::state::AppState;
@@ -264,14 +264,6 @@ async fn execute_tool(
     } else {
         Err(format!("Error: {:?}", result.error))
     }
-}
-
-pub fn format_interactive_elements(elements: &[InteractiveElementDto]) -> String {
-    elements
-        .iter()
-        .map(|e| format!("- Ref {}: {} ({})", e.id, e.name, e.role))
-        .collect::<Vec<_>>()
-        .join("\n")
 }
 
 // --- Main Handler ---

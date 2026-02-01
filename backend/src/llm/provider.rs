@@ -106,11 +106,9 @@ pub fn parse_image_data(img_data: &str) -> (ImageMediaType, &str) {
         (ImageMediaType::JPEG, stripped)
     } else if let Some(stripped) = img_data.strip_prefix("data:image/webp;base64,") {
         (ImageMediaType::WEBP, stripped)
+    } else if let Some(comma_pos) = img_data.find(',') {
+        (ImageMediaType::JPEG, &img_data[comma_pos + 1..])
     } else {
-        if let Some(comma_pos) = img_data.find(',') {
-            (ImageMediaType::JPEG, &img_data[comma_pos + 1..])
-        } else {
-            (ImageMediaType::JPEG, img_data)
-        }
+        (ImageMediaType::JPEG, img_data)
     }
 }
