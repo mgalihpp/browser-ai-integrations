@@ -12,7 +12,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy manifests first for dependency caching
-COPY Cargo.toml Cargo.lock* ./
+# Note: Dockerfile is in backend/, but build context is repo root
+COPY backend/Cargo.toml backend/Cargo.lock* ./
 
 # Create a dummy main.rs to build dependencies (cache layer optimization)
 RUN mkdir src && \
@@ -21,7 +22,7 @@ RUN mkdir src && \
     rm -rf src
 
 # Copy the actual source code
-COPY src ./src
+COPY backend/src ./src
 
 # Touch main.rs to invalidate the dummy build and rebuild with real code
 RUN touch src/main.rs && \
