@@ -1,0 +1,28 @@
+# Build artifacts
+target/
+debug/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+LICENSE
+
+# Environment files (secrets should be set in Koyeb dashboard)
+.env
+.env.*
+
+# Test files
+tests/
+
+# Miscellaneous
+*.log
+*.bak
