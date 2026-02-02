@@ -1,7 +1,7 @@
 # =============================================================================
-# Stage 1: Build Stage
+# Stage 1: Build Stage (using nightly for edition 2024)
 # =============================================================================
-FROM rust:1.84-slim-bookworm AS builder
+FROM rustlang/rust:nightly-slim-bookworm AS builder
 
 WORKDIR /app
 
@@ -10,6 +10,9 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# Enable edition 2024 feature
+ENV RUSTFLAGS="--edition=2024"
 
 # Copy manifests first for dependency caching
 # Note: Dockerfile is in backend/, but build context is repo root
